@@ -3,7 +3,7 @@
 <head>
     <title>Quickstart for MSAL JS</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bluebird/3.3.4/bluebird.min.js"></script>
-    <script src="dist/msal.min.js"></script>
+    <script src="https://alcdn.msftauth.net/lib/1.2.0/js/msal.js"></script>
     <link rel="stylesheet" type="text/css" href="/style.css">
 </head>
 
@@ -26,31 +26,32 @@
             graphEndpoint: "https://graph.microsoft.com/v1.0/me",
             loginType: 'POPUP'
     };*/
+    if (!(window !== window.parent && !window.opener)) {
+    } else {
+        console.log('loading silent refresh in iFrame');
 
+    }
     var msalConfig = {
         auth: {
-            clientId: "Enter_your_client_id",
-            authority: "https://login.microsoftonline.com/common",
-            validateAuthority: true
+            clientId: "6fa0ff31-bfad-4d6a-99d2-3f7d00cc0b2a",
+            authority: "https://login.microsoftonline.com/tfp/7bec88f8-013e-403f-8cc9-9e451c46f7ea/B2C_1_MMG_Test_Signin/v2.0",
+            validateAuthority: false,
+            redirectUri: 'http://localhost:3000'
         },
         cache: {
             cacheLocation: "localStorage",
-            storeAuthStateInCookie: true
+            storeAuthStateInCookie: false
         }
     };
 
     var loginRequest = {
-        scopes: ["openid", "profile", "User.Read"]
+        scopes: [`https://InteractionPlacesB2C1.onmicrosoft.com/mmg-api/read`, 'openid']
     }
 
     var tokenRequest = {
-        scopes: ["Mail.Read"]
+        scopes: [`https://InteractionPlacesB2C1.onmicrosoft.com/mmg-api/read`, 'openid']
     };
 
-    var graphConfig = {
-        graphMeEndpoint: "https://graph.microsoft.com/v1.0/me",
-        graphMailEndpoint: "https://graph.microsoft.com/v1.0/me/messages"
-    };
 
 
     var myMSALObj = new Msal.UserAgentApplication(msalConfig);
@@ -64,7 +65,7 @@
             //Login Success
             console.log(loginResponse);
             showWelcomeMessage();
-            acquireTokenPopupAndCallMSGraph(graphConfig.graphMeEndpoint, tokenRequest);
+            acquireTokenPopupAndCallMSGraph(tokenRequest);
         }).catch(function (error) {
             console.log(error);
         });
@@ -79,13 +80,13 @@
         */
         myMSALObj.acquireTokenSilent(request).then(function (tokenResponse) {
             console.log("acquireTokenSilent scopes: ", tokenResponse.scopes);
-            callMSGraph(endpoint, tokenResponse.accessToken, graphAPICallback);
+            // callMSGraph(endpoint, tokenResponse.accessToken, graphAPICallback);
         }).catch(function (error) {
             console.log(error);
             // Call acquireTokenPopup (popup window) in case of acquireTokenSilent failure due to consent or interaction required ONLY
             if (requiresInteraction(error.errorCode)) {
                 myMSALObj.acquireTokenPopup(request).then(function (tokenResponse) {
-                    callMSGraph(endpoint, tokenResponse.accessToken, graphAPICallback);
+                    // callMSGraph(endpoint, tokenResponse.accessToken, graphAPICallback);
                 }).catch(function (error) {
                     console.log(error);
                 });
@@ -93,20 +94,6 @@
         });
     }
 
-    function callMSGraph(theUrl, accessToken, callback) {
-        var xmlHttp = new XMLHttpRequest();
-        xmlHttp.onreadystatechange = function () {
-            if (this.readyState == 4 && this.status == 200)
-                callback(JSON.parse(this.responseText));
-        }
-        xmlHttp.open("GET", theUrl, true); // true for asynchronous
-        xmlHttp.setRequestHeader('Authorization', 'Bearer ' + accessToken);
-        xmlHttp.send();
-    }
-
-    function graphAPICallback(data) {
-        document.getElementById("json").innerHTML = JSON.stringify(data, null, 2);
-    }
 
     function showWelcomeMessage() {
         var divWelcome = document.getElementById('WelcomeMessage');
@@ -116,22 +103,19 @@
         loginbutton.setAttribute('onclick', 'signOut();');
     }
 
-    function readMail() {
-        acquireTokenPopupAndCallMSGraph(graphConfig.graphMailEndpoint, tokenRequest);
-    }
 
     function signOut() {
         myMSALObj.logout();
     }
 
    // This function can be removed if you do not need to support IE
-   function acquireTokenRedirectAndCallMSGraph(endpoint, request) {
+   function acquireTokenRedirectAndCallMSGraph(request) {
         //Call acquireTokenSilent (iframe) to obtain a token for Microsoft Graph
         /*let tokenRequest = {
             scopes: graphConfig.scopes
         };*/
         myMSALObj.acquireTokenSilent(request).then(function (tokenResponse) {
-            callMSGraph(endpoint, tokenResponse.accessToken, graphAPICallback);
+            // callMSGraph(endpoint, tokenResponse.accessToken, graphAPICallback);
         }).catch(function (error) {
             console.log("error is: "+ error);
             console.log("stack:" + error.stack);
@@ -148,9 +132,7 @@
         } else {
             if (response.tokenType === "id_token") {
                 showWelcomeMessage();
-                acquireTokenRedirectAndCallMSGraph(graphConfig.graphMeEndpoint, loginRequest);
-            } else if (response.tokenType === "access_token") {
-                callMSGraph(graphConfig.graphMeEndpoint, response.accessToken, graphAPICallback);
+                // acquireTokenRedirectAndCallMSGraph(graphConfig.graphMeEndpoint, loginRequest);
             } else {
                 console.log("token type is:" + response.tokenType);
             }
@@ -178,10 +160,10 @@
 
     //If you support IE, our recommendation is that you sign-in using Redirect APIs
     //If you as a developer are testing using Edge InPrivate mode, please add "isEdge" to the if check
-    if (!isIE) {
+    if (false) {
         if (myMSALObj.getAccount()) {// avoid duplicate code execution on page load in case of iframe and popup window.
             showWelcomeMessage();
-            acquireTokenPopupAndCallMSGraph(graphConfig.graphMeEndpoint, loginRequest);
+            acquireTokenPopupAndCallMSGraph( loginRequest);
         }
     }
     else {
@@ -196,7 +178,7 @@
 
         if (myMSALObj.getAccount() && !myMSALObj.isCallback(window.location.hash)) {// avoid duplicate code execution on page load in case of iframe and popup window.
             showWelcomeMessage();
-            acquireTokenRedirectAndCallMSGraph(graphConfig.graphMeEndpoint, loginRequest);
+            acquireTokenRedirectAndCallMSGraph(loginRequest);
         }
     }
 </script>
